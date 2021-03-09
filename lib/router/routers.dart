@@ -1,5 +1,6 @@
 import './sterilize.dart';
 import './koji_making.dart';
+import './wheat.dart';
 
 import 'package:dfmdsapp/pages/common/no_net.dart';
 import 'package:dfmdsapp/pages/login/login.dart';
@@ -12,8 +13,11 @@ import 'package:dfmdsapp/components/search.dart';
 import 'package:dfmdsapp/components/pagesComponents/text_add.dart';
 import 'package:dfmdsapp/components/pagesComponents/exeption_add.dart';
 
+import 'package:dfmdsapp/components/web_view.dart';
+
 Map<String, Function> commonRouters = {
   '/noNet': (contxt, {arguments}) => NoNetPage(),
+  '/webview': (contxt, {arguments}) => WebViewPage(arguments: arguments),
   '/login': (contxt, {arguments}) => LoginPage(),
   '/home': (contxt, {arguments}) => IndexPage(arguments: arguments),
   '/list': (contxt, {arguments}) => IndexPage(arguments: arguments),
@@ -41,6 +45,7 @@ class RoutersManager {
     allRouters.addAll(commonRouters);
     allRouters.addAll(steilizeRouters);
     allRouters.addAll(kojiMakingRouters);
+    allRouters.addAll(wheatRouters);
   }
 
   static RoutersManager _getInstance() {
