@@ -14,22 +14,44 @@ class _WheatListPageState extends State<WheatListPage> {
   List dataList = [];
 
   // 同步
+  _syncOrder() async {
+    var ruleList = dataList.where((e) => e['isModified'] == true).toList();
+    if (ruleList.length > 0) {
+      $confirm(
+        context,
+        title: '提示',
+        subtitle: '当前有未上传数据，是否继续同步订单？',
+        success: () {
+          _getOrderList();
+        },
+      );
+    } else {
+      _getOrderList();
+    }
+  }
+
   _getOrderList() async {
+    checkboxStatus = false;
     try {
       String productLineCode =
           await SharedUtil.instance.getStorage('productLineCode');
       String workShopCode =
           await SharedUtil.instance.getStorage('workShopCode');
+      var batch = await Wheat.wheatBatchApi({
+        'workShopCode': workShopCode,
+      });
       var res = await Wheat.wheatOrderListApi({
         'workShopCode': workShopCode,
         'productLineCode': productLineCode,
         'orderList': []
       });
+      await SharedUtil.instance.saveMapStorage('batchList', batch['list']);
       await SharedUtil.instance.saveMapStorage('orderList', res['list']);
       await SharedUtil.instance
           .saveMapStorage('wheatDeviceList', res['wheatDeviceList']);
       await SharedUtil.instance
           .saveMapStorage('flourDeviceList', res['flourDeviceList']);
+      _init();
     } catch (e) {}
   }
 
@@ -38,12 +60,30 @@ class _WheatListPageState extends State<WheatListPage> {
     setState(() {
       if (checkboxStatus == false) {
         checkboxStatus = true;
+      } else {
+        List uploadList = dataList.where((e) => e['checkbox'] == true).toList();
+        if (uploadList.length > 0) {
+          $confirm(context, title: '提示', subtitle: '请确认是否上传', success: () {
+            _upLoad(uploadList);
+          });
+        } else {
+          $warningToast(context, msg: '请选择要上传的数据');
+        }
       }
     });
   }
 
+  _upLoad(data) async {
+    try {
+      await Wheat.wheatUploadApi(data);
+      await $successToast(context);
+      _getOrderList();
+    } catch (e) {}
+  }
+
   // 入库表格表头
   Widget _listTitle(item, orderIndex) {
+    var order = item['pkgOrderEntity'];
     return Container(
       color: Colors.white,
       padding: EdgeInsets.all(12),
@@ -54,7 +94,7 @@ class _WheatListPageState extends State<WheatListPage> {
             height: 60,
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('lib/assets/images/qufang.png'),
+                image: AssetImage('lib/assets/images/wheat.png'),
                 fit: BoxFit.cover,
               ),
               borderRadius: BorderRadius.all(Radius.circular(4.0)),
@@ -67,20 +107,20 @@ class _WheatListPageState extends State<WheatListPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                item['kojiHouseName'] == ''
+                order['orderNo'] == ''
                     ? SizedBox()
                     : Text(
-                        '${item['kojiHouseName']}',
+                        '${order['orderNo']}',
                         style:
                             TextStyle(fontSize: 17, color: Color(0xFF333333)),
                       ),
                 Text(
-                  '${item['materialCode']} ${item['materialName']}',
+                  '${order['materialCode']} ${order['materialName']}',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
                 ),
                 Text(
-                  '${item['orderNo']}',
+                  '${order['planOutput'] == null ? '0' : order['planOutput']} ${order['outputUnit']}',
                   style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
                 ),
               ],
@@ -89,11 +129,11 @@ class _WheatListPageState extends State<WheatListPage> {
           Column(
             children: <Widget>[
               Text(
-                '${item['statusName']}',
+                '${order['orderStatus'] == 'saved' ? '已保存' : order['orderStatus'] == 'noPass' ? '不通过' : order['orderStatus'] == 'submit' ? '已提交' : order['orderStatus'] == 'checked' ? '通过' : order['orderStatus']}',
                 style: TextStyle(fontSize: 13, color: Color(0xFF333333)),
               ),
               Text(
-                '${item['productDate']}',
+                '${order['productDate']}',
                 style: TextStyle(fontSize: 13, color: Color(0xFF666666)),
               ),
             ],
@@ -176,7 +216,8 @@ class _WheatListPageState extends State<WheatListPage> {
         color: Color(0xFFD8D8D8),
       ),
     );
-    for (var index = 0; index < item['table'].length; index++) {
+    for (var index = 0; index < item['inList'].length; index++) {
+      var table = item['inList'][index];
       widgetArr.add(InkWell(
         onTap: () {
           Navigator.pushNamed(
@@ -195,28 +236,28 @@ class _WheatListPageState extends State<WheatListPage> {
               Expanded(
                 flex: 2,
                 child: Text(
-                  '麦粉计量仓',
+                  '${table['flourDeviceName']}',
                   style: TextStyle(fontSize: 14, color: Color(0xFF333333)),
                 ),
               ),
               Expanded(
                 flex: 1,
                 child: Text(
-                  '起始',
+                  '${table['startWeight']}',
                   style: TextStyle(fontSize: 14, color: Color(0xFF333333)),
                 ),
               ),
               Expanded(
                 flex: 1,
                 child: Text(
-                  '结束',
+                  '${table['endWeight']}',
                   style: TextStyle(fontSize: 14, color: Color(0xFF333333)),
                 ),
               ),
               Expanded(
                 flex: 1,
                 child: Text(
-                  '数量(KG)',
+                  '${table['inPortWeight']}',
                   style: TextStyle(fontSize: 14, color: Color(0xFF333333)),
                 ),
               ),
@@ -247,7 +288,7 @@ class _WheatListPageState extends State<WheatListPage> {
   // 折叠面板结构
   Widget _getExpansionPanelList(item, orderIndex) {
     ExpansionPanel expansionPanel = ExpansionPanel(
-      isExpanded: item['isExpanded'],
+      isExpanded: item['isExpanded'] == null ? false : item['isExpanded'],
       canTapOnHeader: true,
       headerBuilder: (context, isExpanded) {
         return _listTitle(item, orderIndex);
@@ -320,8 +361,13 @@ class _WheatListPageState extends State<WheatListPage> {
     List<Widget> widgetArr = dataList.asMap().keys.map((index) {
       return _getSlide(dataList[index], index);
     }).toList();
-    return ListView(
-        padding: EdgeInsets.fromLTRB(0, 10, 0, 60), children: widgetArr);
+    if (widgetArr.length > 0) {
+      return ListView(
+          padding: EdgeInsets.fromLTRB(0, 10, 0, 60), children: widgetArr);
+    }
+    return Center(
+      child: NoDataWidget(),
+    );
   }
 
   // 底部按钮
@@ -347,7 +393,7 @@ class _WheatListPageState extends State<WheatListPage> {
                             style: TextStyle(fontSize: 18.0),
                           ),
                         ),
-                        onPressed: _getOrderList,
+                        onPressed: _syncOrder,
                       ),
                     ),
                   )
@@ -402,7 +448,10 @@ class _WheatListPageState extends State<WheatListPage> {
   }
 
   _init() async {
-    dataList = await SharedUtil.instance.getMapStorage('orderList');
+    var data = await SharedUtil.instance.getMapStorage('orderList');
+    if (data != null) {
+      dataList = data;
+    }
     setState(() {});
   }
 
