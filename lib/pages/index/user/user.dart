@@ -6,8 +6,8 @@ import 'package:dfmdsapp/utils/storage.dart';
 import 'package:dfmdsapp/api/api/index.dart';
 import 'package:dfmdsapp/api/http/socket.dart';
 import 'package:dfmdsapp/utils/path_provider.dart';
-import 'package:dfmdsapp/assets/iconfont/IconFont.dart';
-import 'package:dfmdsapp/utils/toast.dart';
+import 'package:dfmdsapp/assets/iconfont/icon_font.dart';
+import 'package:dfmdsapp/utils/index.dart';
 
 class UserPage extends StatefulWidget {
   UserPage({Key key}) : super(key: key);
@@ -153,6 +153,19 @@ class _UserPageState extends State<UserPage>
                       Navigator.pushNamed(context, '/user/versions');
                     },
                   ),
+                  // InkWell(
+                  //   onTap: () {
+                  //     Navigator.pushNamed(context, '/webview', arguments: {
+                  //       'url':
+                  //           'http://10.22.7.52:3000/v1/work/preview?id=123463'
+                  //     });
+                  //   },
+                  //   child: Container(
+                  //     padding: EdgeInsets.fromLTRB(0, 10, 0, 10),
+                  //     height: 40,
+                  //     child: Text('webview'),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -299,9 +312,9 @@ class _StorageDialogState extends State<StorageDialog> {
   Widget build(BuildContext context) {
     return DiaLogContainer(
       success: () async {
-        clearFileCache(() {
+        clearCache(() async {
           Navigator.of(context, rootNavigator: true).pop();
-          successToast(msg: '操作成功');
+          await $successToast(context, msg: '清除成功，请重新登陆');
         });
       },
       child: Column(
